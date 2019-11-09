@@ -19,10 +19,10 @@ MongoClient.connect(url, function (err, db) {
   if (err) throw err;
   var dbo = db.db("Clients_db");
 
-  dbo.collection("customers").deleteMany(function(err, obj) {
-    if (err) throw err;
-    console.log(obj.result.n + " document(s) deleted");
-  });
+  // dbo.collection("customers").deleteMany(function(err, obj) {
+  //   if (err) throw err;
+  //   console.log(obj.result.n + " document(s) deleted");
+  // });
 
   dbo.createCollection("customers", function (err, res) {
     if (err) throw err;
