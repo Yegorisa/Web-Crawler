@@ -38,12 +38,12 @@ function getIds() {
       var $ = res.$;
       var noResultBox = $('.messageBox h2').toString();
 
-      // if (count === 5) {
-      //   console.log(ids);
-      //   console.log('length ' + ids.length);
-      //   recordInfo();
-      //   return;
-      // }
+      if (count === 5) {
+        console.log(ids);
+        console.log('length ' + ids.length);
+        recordInfo();
+        return;
+      }
 
       if (error) {
         console.log('error ' + error);
@@ -77,9 +77,9 @@ function getIds() {
 var recordCounter = 0;
 function recordInfo() {
   ids.forEach(function (uri) {
-console.log('uri ' + uri);
+    console.log('uri ' + uri);
     c.queue([{
-      // uri: 'https://lbp.ewr.govt.nz' + uri,
+      uri: 'https://lbp.ewr.govt.nz' + uri,
 
       // The global callback won't be called
       callback: function (error, res, done) {
