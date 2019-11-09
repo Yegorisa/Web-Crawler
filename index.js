@@ -14,27 +14,37 @@ if (port == null || port == "") {
 server.listen(port);
 
 var url = process.env.MONGODB_URI || 'mongodb://localhost:27017/mydb';
+const dbName = "heroku_45jq6d6k";
 
 MongoClient.connect(url, function (err, db) {
   if (err) throw err;
-  var dbo = db.db("heroku_45jq6d6k");
+  var dbo = db.db(dbName);
 
   // dbo.collection("customers").deleteMany(function(err, obj) {
   //   if (err) throw err;
   //   console.log(obj.result.n + " document(s) deleted");
   // });
 
-  dbo.createCollection("customers", function (err, res) {
-    if (err) throw err;
-    console.log("Collection created!");
+  // dbo.createCollection("customers", function (err, res) {
+  //   if (err) throw err;
+  //   console.log("Collection created!");
+  // });
 
-    db.close();
+  dbo.collection("customers").find({}).toArray(function(err, result) {
+    if (err) throw err;
+    oldEmails = result.map((profile) => (profile.email));
+    console.log('---OLD PROFILES---');
+    console.log(oldEmails.length);
   });
+
+  db.close();
 });
 
 var ids = [];
 
+var oldEmails = [];
 var clientProfiles = [];
+var newProfiles = [];
 
 var count = 0;
 var search = 'lbpid=';
@@ -58,11 +68,11 @@ function getIds(recordIds) {
         done();
       }
 
-      else if (count === 3) {
-        console.log('length ' + ids.length);
-        recordIds();
-        done();
-      }
+      // else if (count === 4) {
+      //   console.log('length ' + ids.length);
+      //   recordIds();
+      //   done();
+      // }
 
       else if (noResultBox.includes('No results found')) {
         console.log('length ' + ids.length);
@@ -92,19 +102,22 @@ var recordCounter = 0;
 function recordInfo() {
 
   c.on('drain',function(){
-    console.log(clientProfiles);
     MongoClient.connect(url, function(err, db) {
       if (err) throw err;
-      var dbo = db.db("heroku_45jq6d6k");
+      var dbo = db.db(dbName);
+
       dbo.collection("customers").insertMany(clientProfiles, function(err, res) {
         if (err) throw err;
         console.log("Number of documents inserted: " + res.insertedCount);
       });
-      dbo.collection("customers").find({}).toArray(function(err, result) {
-        if (err) throw err;
-        console.log(result);
-        db.close();
-      });
+      console.log('---ALL PROFILES---');
+      console.log(clientProfiles.length);
+
+      newProfiles = clientProfiles.filter(clientInfo => !oldEmails.includes(clientInfo.email));
+      console.log('---NEW PROFILES---');
+      console.log(newProfiles.length);
+
+      db.close();
     });
   });
 
@@ -128,7 +141,7 @@ function recordInfo() {
 
           clientProfiles.push(clientInfo);
         }
-        console.log('wrote a record ' + ++recordCounter);
+        //console.log('add a record ' + ++recordCounter);
         done();
       }
     }]);
