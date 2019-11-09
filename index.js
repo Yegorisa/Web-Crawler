@@ -1,9 +1,6 @@
 const http = require('http');
-var fs = require('fs');
-
-fs.writeFile('chetire_pazana.txt', null, function(){
-
-})
+var Crawler = require('crawler');
+var MongoClient = require('mongodb').MongoClient;
 
 const server = http.createServer((req, res) => {
   res.statusCode = 200;
@@ -16,24 +13,37 @@ if (port == null || port == "") {
 }
 server.listen(port);
 
-var Crawler = require("crawler");
-const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+var url = process.env.MONGODB_URI || 'mongodb://localhost:27017/mydb';
 
-const csvWriter = createCsvWriter({
-  path: require('path').join(__dirname, 'emails.csv'),
-  header: [
-    { id: 'name', title: 'name' },
-    { id: 'phone', title: 'phone' },
-    { id: 'email', title: 'email' }
-  ]
+MongoClient.connect(url, function (err, db) {
+  if (err) throw err;
+  var dbo = db.db("Clients_db");
+
+  dbo.collection("customers").deleteMany(function(err, obj) {
+    if (err) throw err;
+    console.log(obj.result.n + " document(s) deleted");
+  });
+
+  dbo.createCollection("customers", function (err, res) {
+    if (err) throw err;
+    console.log("Collection created!");
+
+    db.close();
+  });
 });
 
 var ids = [];
 
+var clientProfiles = [];
+
 var count = 0;
 var search = 'lbpid=';
 
-function getIds() {
+var c = new Crawler({
+  maxConnections: 10,
+});
+
+function getIds(recordIds) {
   c.queue([{
 
     uri: 'https://lbp.ewr.govt.nz/PublicRegister/Search.aspx?t=Auckland&lc=LIC002&r=Auckland&search=1&p=' + ++count + '&sc=1',
@@ -43,23 +53,23 @@ function getIds() {
       var $ = res.$;
       var noResultBox = $('.messageBox h2').toString();
 
-      if (count === 5) {
-        console.log(ids);
-        console.log('length ' + ids.length);
-        recordInfo();
-        return;
-      }
-
       if (error) {
         console.log('error ' + error);
+        done();
       }
-      else if (noResultBox.includes('No results found')) {
-        console.log('exit');
-        // console.log(ids);
+
+      else if (count === 3) {
         console.log('length ' + ids.length);
-        recordInfo();
-        return;
+        recordIds();
+        done();
       }
+
+      else if (noResultBox.includes('No results found')) {
+        console.log('length ' + ids.length);
+        recordIds();
+        done();
+      }
+
       else {
         console.log(count);
 
@@ -71,16 +81,33 @@ function getIds() {
             ids.push(el);
           }
         });
-
-        getIds()
+        getIds(recordIds);
+        done();
       }
-      done();
     }
   }]);
 }
 
 var recordCounter = 0;
 function recordInfo() {
+
+  c.on('drain',function(){
+    console.log(clientProfiles);
+    MongoClient.connect(url, function(err, db) {
+      if (err) throw err;
+      var dbo = db.db("Clients_db");
+      dbo.collection("customers").insertMany(clientProfiles, function(err, res) {
+        if (err) throw err;
+        console.log("Number of documents inserted: " + res.insertedCount);
+      });
+      dbo.collection("customers").find({}).toArray(function(err, result) {
+        if (err) throw err;
+        console.log(result);
+        db.close();
+      });
+    });
+  });
+
   ids.forEach(function (uri) {
     console.log('uri ' + uri);
     c.queue([{
@@ -93,35 +120,19 @@ function recordInfo() {
         } else {
           var $ = res.$;
 
-          csvWriter.writeRecords([
-            {
-              name: $('.formContainer > h2').text().split(' -')[0],
-              phone: $('#ctl00_MainContent_ucLbpDetails_fkPhoneNumber_View').text(),
-              email: $('#ctl00_MainContent_ucLbpDetails_fkEmailAddress_View').text()
-            }
-          ]).then(() => console.log('wrote a record ' + ++recordCounter))
+          const clientInfo = {
+            name: $('.formContainer > h2').text().split(' -')[0],
+            phone: $('#ctl00_MainContent_ucLbpDetails_fkPhoneNumber_View').text(),
+            email: $('#ctl00_MainContent_ucLbpDetails_fkEmailAddress_View').text()
+          }
+
+          clientProfiles.push(clientInfo);
         }
+        console.log('wrote a record ' + ++recordCounter);
         done();
       }
     }]);
-
   })
 }
 
-var c = new Crawler({
-  maxConnections: 10,
-  // This will be called for each crawled page
-  callback: function (error, res, done) {
-    if (error) {
-      console.log(error);
-    } else {
-      var $ = res.$;
-      // $ is Cheerio by default
-      //a lean implementation of core jQuery designed specifically for the server
-      console.log($("title").text());
-    }
-    done();
-  }
-});
-
-getIds();
+getIds(recordInfo);
