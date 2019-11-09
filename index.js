@@ -17,7 +17,7 @@ var url = process.env.MONGODB_URI || 'mongodb://localhost:27017/mydb';
 
 MongoClient.connect(url, function (err, db) {
   if (err) throw err;
-  var dbo = db.db("Clients_db");
+  var dbo = db.db("heroku_45jq6d6k");
 
   // dbo.collection("customers").deleteMany(function(err, obj) {
   //   if (err) throw err;
