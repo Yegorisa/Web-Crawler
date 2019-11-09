@@ -1,3 +1,16 @@
+const http = require('http');
+
+const server = http.createServer((req, res) => {
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'text/plain');
+  res.end('Hello World\n');
+});
+let port = process.env.PORT;
+if (port == null || port == "") {
+  port = 8000;
+}
+server.listen(port);
+
 var Crawler = require("crawler");
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
