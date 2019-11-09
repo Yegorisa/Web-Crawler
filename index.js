@@ -95,7 +95,7 @@ function recordInfo() {
     console.log(clientProfiles);
     MongoClient.connect(url, function(err, db) {
       if (err) throw err;
-      var dbo = db.db("Clients_db");
+      var dbo = db.db("heroku_45jq6d6k");
       dbo.collection("customers").insertMany(clientProfiles, function(err, res) {
         if (err) throw err;
         console.log("Number of documents inserted: " + res.insertedCount);
