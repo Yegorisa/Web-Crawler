@@ -1,4 +1,9 @@
 const http = require('http');
+var fs = require('fs');
+
+fs.writeFile('chetire_pazana.txt', null, function(){
+
+})
 
 const server = http.createServer((req, res) => {
   res.statusCode = 200;
