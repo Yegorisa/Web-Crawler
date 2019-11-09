@@ -38,12 +38,12 @@ function getIds() {
       var $ = res.$;
       var noResultBox = $('.messageBox h2').toString();
 
-      // if (count === 5) {
-      //   console.log(ids);
-      //   console.log('length ' + ids.length);
-      //   recordInfo();
-      //   return;
-      // }
+      if (count === 5) {
+        console.log(ids);
+        console.log('length ' + ids.length);
+        recordInfo();
+        return;
+      }
 
       if (error) {
         console.log('error ' + error);
