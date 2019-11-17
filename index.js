@@ -1,44 +1,32 @@
 const http = require('http');
 var Crawler = require('crawler');
 var MongoClient = require('mongodb').MongoClient;
+const express = require('express');
 
-const server = http.createServer((req, res) => {
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'text/plain');
-  res.end('Hello World\n');
-});
+// const server = http.createServer((req, res) => {
+//   res.statusCode = 200;
+//   res.setHeader('Content-Type', 'text/plain');
+//   res.end('Hello World\n');
+// });
+const server = express()
+server.use(express.static('public'));
+
 let port = process.env.PORT;
 if (port == null || port == "") {
-  port = 8000;
+  port = 8080;
 }
+server.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
+
+server.post('/clicked', (req, res) => {
+  console.log("RECIEVED REQUEST HEU HEY")
+  startCrawling(recordInfo, res);
+
+});
+
 server.listen(port);
 
-var url = process.env.MONGODB_URI || 'mongodb://localhost:27017/mydb';
-const dbName = "heroku_45jq6d6k";
-
-MongoClient.connect(url, function (err, db) {
-  if (err) throw err;
-  var dbo = db.db(dbName);
-
-  // dbo.collection("customers").deleteMany(function(err, obj) {
-  //   if (err) throw err;
-  //   console.log(obj.result.n + " document(s) deleted");
-  // });
-
-  // dbo.createCollection("customers", function (err, res) {
-  //   if (err) throw err;
-  //   console.log("Collection created!");
-  // });
-
-  dbo.collection("customers").find({}).toArray(function(err, result) {
-    if (err) throw err;
-    oldEmails = result.map((profile) => (profile.email));
-    console.log('---OLD PROFILES---');
-    console.log(oldEmails.length);
-  });
-
-  db.close();
-});
 
 var ids = [];
 
@@ -49,11 +37,37 @@ var newProfiles = [];
 var count = 0;
 var search = 'lbpid=';
 
+var megaResponse;
+var url = process.env.MONGODB_URI || 'mongodb://heroku_45jq6d6k:geeti0e5hag4vt1ijdvt7e0hbb@ds241268.mlab.com:41268/heroku_45jq6d6k';
+const dbName = "heroku_45jq6d6k";
+
 var c = new Crawler({
   maxConnections: 10,
 });
 
-function getIds(recordIds) {
+function startCrawling(recordIds, response) {
+  megaResponse = response
+
+  // var url = process.env.MONGODB_URI || 'mongodb://localhost:27017/mydb';
+
+  MongoClient.connect(url, function (err, db) {
+    if (err) throw err;
+    var dbo = db.db(dbName);
+    dbo.collection("customers").find({}).toArray(function (err, result) {
+      if (err) throw err;
+      oldEmails = result.map((profile) => (profile.email));
+      console.log('---OLD PROFILES---');
+      console.log(oldEmails.length);
+    });
+
+    db.close();
+  });
+  getIds(recordInfo, response)
+}
+
+function getIds(recordIds, response) {
+
+
   c.queue([{
 
     uri: 'https://lbp.ewr.govt.nz/PublicRegister/Search.aspx?t=Auckland&lc=LIC002&r=Auckland&search=1&p=' + ++count + '&sc=1',
@@ -68,11 +82,11 @@ function getIds(recordIds) {
         done();
       }
 
-      // else if (count === 4) {
-      //   console.log('length ' + ids.length);
-      //   recordIds();
-      //   done();
-      // }
+      else if (count === 2) {
+        console.log('length ' + ids.length);
+        recordIds();
+        done();
+      }
 
       else if (noResultBox.includes('No results found')) {
         console.log('length ' + ids.length);
@@ -98,15 +112,22 @@ function getIds(recordIds) {
   }]);
 }
 
-var recordCounter = 0;
-function recordInfo() {
+function deleteAllPreviousRecords(dbo) {
+  dbo.collection("customers").deleteMany(function (err, obj) {
+    if (err) throw err;
+    console.log(obj.result.n + " document(s) deleted");
+  });
+}
 
-  c.on('drain',function(){
-    MongoClient.connect(url, function(err, db) {
+function recordInfo() {
+  c.on('drain', function () {
+    MongoClient.connect(url, function (err, db) {
       if (err) throw err;
       var dbo = db.db(dbName);
 
-      dbo.collection("customers").insertMany(clientProfiles, function(err, res) {
+      deleteAllPreviousRecords(dbo);
+
+      dbo.collection("customers").insertMany(clientProfiles, function (err, res) {
         if (err) throw err;
         console.log("Number of documents inserted: " + res.insertedCount);
       });
@@ -118,9 +139,10 @@ function recordInfo() {
       console.log(newProfiles.length);
 
       db.close();
+      megaResponse.send(clientProfiles)
+      megaResponse.sendStatus(201);
     });
   });
-
   ids.forEach(function (uri) {
     console.log('uri ' + uri);
     c.queue([{
@@ -147,5 +169,3 @@ function recordInfo() {
     }]);
   })
 }
-
-getIds(recordInfo);
